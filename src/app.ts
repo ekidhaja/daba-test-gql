@@ -1,11 +1,16 @@
 import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
+import { config } from "dotenv";
+
+config();
 
 const app: Application = express();
 const baseUri = "api/v1";
 
-app.listen(8000, () => {
-	console.log("Server listening at port 8000");
+const PORT = process.env.PORT || 8000;
+
+app.listen(PORT, () => {
+	console.log(`Server listening at port ${PORT}`);
 	startServer();
 });
 
