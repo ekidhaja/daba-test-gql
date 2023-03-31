@@ -1,6 +1,19 @@
 # Nodejs/typescript project scaffold
 
-This is basic scaffolding for a nodejs/typescript project. It has basic libraries already included.
+This is basic scaffolding for a nodejs/typescript project. It has basic packages already included.
+
+Packages included:
+
+-   express
+-   dotenv
+-   cors
+-   axios
+-   joi
+-   jest
+-   supertest
+-   concurrently
+-   eslint
+-   prettier
 
 ## Installation
 

@@ -2,6 +2,9 @@ import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { config } from "dotenv";
 
+//import routes
+import { OrderRoutes } from "./routes";
+
 config();
 
 const app: Application = express();
@@ -28,6 +31,7 @@ function startServer() {
 	app.use(express.json());
 
 	//api routes
+	app.use(`/${baseUri}/orders`, OrderRoutes);
 
 	//health check
 	app.get(`/${baseUri}/ping`, (_req, res) => {
