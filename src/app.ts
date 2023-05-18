@@ -1,61 +1,88 @@
-import express, { Application, Request, Response, NextFunction } from "express";
+import express from "express";
+import { ApolloServer, ApolloError } from "apollo-server-express";
+import mongoose from "mongoose";
 import cors from "cors";
 import { config } from "dotenv";
-
-//import routes
-import { OrderRoutes } from "./routes";
+import typeDefs from "./typeDefs";
+import resolvers from "./resolvers";
+import { Context } from "./typings";
 
 config();
 
-const app: Application = express();
-const baseUri = "api/v1";
+const PORT = process.env.PORT || 4000;
+const MONGO_USERNAME = process.env.MONGO_USERNAME || "";
+const MONGO_PASSWORD = process.env.MONGO_PASSWORD || "";
 
-const PORT = process.env.PORT || 8000;
+const dbUrl = `mongodb+srv://${MONGO_USERNAME}:${MONGO_PASSWORD}@cluster0.z6zfix6.mongodb.net/payments?retryWrites=true&w=majority`;
 
-app.listen(PORT, () => {
-	console.log(`Server listening at port ${PORT}`);
-	startServer();
-});
+// Handle errors and return them to the client
+const formatError = (error: ApolloError): ApolloError => {
+	const code = error.extensions?.code || "InternalServerError";
+	const message = error.message || "Internal server error";
 
-function startServer() {
+	// assign status code based on the error code
+	let statusCode: number;
+	switch (code) {
+		case "ValidationError":
+			statusCode = 400;
+			break;
+		case "Unauthorized":
+			statusCode = 401;
+			break;
+		case "Forbidden":
+			statusCode = 403;
+			break;
+		case "NotFound":
+			statusCode = 404;
+			break;
+		default:
+			statusCode = 500;
+	}
+
+	error.extensions = {
+		code,
+		statusCode,
+		invalidArgs: error.extensions.invalidArgs,
+	};
+
+	return new ApolloError(message, code, {
+		...error.extensions,
+		//exception: error.extensions.exception,
+	});
+};
+
+// setup apollo server
+const startServer = async () => {
+	const app = express();
+
 	//cors
-	app.use(
-		cors({
-			origin: "*",
-			methods: "GET, HEAD, PUT, PATCH, POST, DELETE",
-		})
-	);
+	app.use(cors({ origin: "*" }));
 
 	//parse incoming requests
-	app.use(express.urlencoded({ extended: true }));
+	app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 	app.use(express.json());
 
-	//api routes
-	app.use(`/${baseUri}/orders`, OrderRoutes);
-
-	//health check
-	app.get(`/${baseUri}/ping`, (_req, res) => {
-		res.status(200).send({ message: "pong" });
+	// setup apollo server
+	const server = new ApolloServer({
+		typeDefs,
+		resolvers,
+		context: ({ req, res }: Context) => ({ req, res }),
+		formatError,
 	});
 
-	//handle errors
-	app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-		const status = "ERROR";
-		let error = err.name;
-		let error_message = err.message;
-		let statusCode;
+	await server.start();
+	server.applyMiddleware({ app });
 
-		if (err.name === "ValidationError") statusCode = 400;
-		else if (err.name === "Unauthorized") statusCode = 401;
-		else if (err.name === "Forbidden") statusCode = 403;
-		else if (err.name === "NotFound") statusCode = 404;
-		else {
-			statusCode = 500;
-			error = "InternalServerError";
-			error_message = "Something went wrong. Please try again after a while.";
-			console.log("Error name: ", err.name, "Error message: ", err.message);
-		}
+	app.listen({ port: PORT }, () =>
+		console.log(`Server ready at http://localhost:${PORT}${server.graphqlPath}`)
+	);
+};
 
-		res.status(statusCode).json({ status, error, error_message });
-	});
-}
+// connect to mongodb and start apollo server
+mongoose
+	.connect(dbUrl)
+	.then(() => {
+		console.log("MongoDB connected");
+	})
+	.then(() => startServer())
+	.catch((err) => console.log(err));
