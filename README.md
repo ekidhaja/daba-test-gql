@@ -34,10 +34,6 @@ Operations like getting account details, balance, transactions history, making t
 
 The transfer operation is a very delicate one that involves three separate operations that must all succeed or fail together. The sender needs to be debited, the recipient needs to be credited, and the transaction needs to be recorded. I made use of mongodb transactions to handle this. If one operation fails then they all fail and everything is rolled back. After all operations succeed then the transaction is commited.
 
-#### A transfer loophole
-
-There is a potential loophole when making transfers. A sender can supply his email address and want to make transfer to himself. This is a very dangerous loophole that could potentially allow users to keep increasing their account balanace. So to block this loophole, before a transfer is made we check if the recipient is the same as the sender then disallow it.
-
 ## Future work
 
 -   Documentation of the APIs and what expected request and response looks like
